@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simple E-Learning Platform</title>
+    <!-- Load Tailwind CSS from CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Custom font and basic setup */
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f7f9fc; /* Light background */
+        }
+    </style>
+</head>
+<body class="min-h-screen">
+
+    <div id="app" class="max-w-7xl mx-auto flex flex-col lg:flex-row shadow-2xl rounded-xl overflow-hidden mt-8 mb-8">
+        
+        <!-- Sidebar: Course List -->
+        <aside class="w-full lg:w-1/3 bg-white p-6 border-r border-gray-100">
+            <h2 class="text-3xl font-extrabold text-teal-700 mb-6 border-b pb-3">Course Library</h2>
+            <div id="course-list" class="space-y-3">
+                <!-- Courses will be dynamically inserted here -->
+            </div>
+            
+            <div class="mt-8 pt-4 border-t border-gray-100 text-xs text-gray-500">
+                <p>Status: Completion saved in local session memory.</p>
+            </div>
+        </aside>
+
+        <!-- Main Content: Course Details -->
+        <main class="w-full lg:w-2/3 bg-white p-8">
+            <div id="course-details">
+                <!-- Details will be dynamically inserted here -->
+                <div class="text-center py-20 text-gray-500">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-16 w-16 mx-auto text-teal-400 mb-4" viewBox="0 0 20 20" fill="currentColor">
+                        <path d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z" />
+                        <path fill-rule="evenodd" d="M4 5a2 2 0 012-2 3 3 0 003 3h2a3 3 0 003-3 2 2 0 012 2v11a2 2 0 01-2 2H6a2 2 0 01-2-2V5zm3 4a1 1 0 000 2h.01a1 1 0 100-2H7zm3 0a1 1 0 000 2h3a1 1 0 100-2h-3zm-3 4a1 1 0 100 2h.01a1 1 0 100-2H7zm3 0a1 1 0 100 2h3a1 1 0 100 2h3a1 1 0 100-2h-3z" clip-rule="evenodd" />
+                    </svg>
+                    <p class="text-xl">Select a course to get started!</p>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        // --- 1. DATA ---
+        const COURSE_DATA = [
+            {
+                id: 'js_mastery',
+                title: 'JavaScript Deep Dive',
+                description: 'Master asynchronous programming, closures, and modern ES6+ features for professional development.',
+                duration: '10 hours',
+                modules: 8,
+                lessons: ['Variables & Scope', 'Asynchronous JS', 'Prototypes & Classes', 'Error Handling']
+            },
+            {
+                id: 'css_layout',
+                title: 'Advanced CSS Layouts',
+                description: 'Learn modern CSS techniques including Flexbox, Grid, and responsive design patterns.',
+                duration: '6 hours',
+                modules: 5,
+                lessons: ['Flexbox Essentials', 'CSS Grid System', 'Responsive Media Queries', 'Custom Properties']
+            },
+            {
+                id: 'git_essentials',
+                title: 'Git & GitHub Workflow',
+                description: 'Understand branching, merging, pull requests, and collaborative version control best practices.',
+                duration: '3 hours',
+                modules: 4,
+                lessons: ['Commits and Staging', 'Branching Strategy', 'Merging and Conflicts', 'Remote Repositories']
+            }
+        ];
+
+        // Simple state management for completion status (uses browser session storage for persistence)
+        let courseCompletionStatus = JSON.parse(localStorage.getItem('courseCompletionStatus')) || {};
+        
+        // Initial setup to ensure all courses are in the status object if not present
+        COURSE_DATA.forEach(course => {
+            if (courseCompletionStatus[course.id] === undefined) {
+                courseCompletionStatus[course.id] = false;
+            }
+        });
+
+        const courseListElement = document.getElementById('course-list');
+        const courseDetailsElement = document.getElementById('course-details');
+        
+        // --- 2. CORE LOGIC ---
+
+        /**
+         * Saves the current completion status to local storage.
+         */
+        function saveStatus() {
+            localStorage.setItem('courseCompletionStatus', JSON.stringify(courseCompletionStatus));
+        }
+
+        /**
+         * Toggles the completion status for a given course ID and re-renders the UI.
+         * @param {string} courseId 
+         */
+        function toggleCompletion(courseId) {
+            courseCompletionStatus[courseId] = !courseCompletionStatus[courseId];
+            saveStatus();
+            
+            // Re-render both the list (to update the badge) and details (to update the button)
+            renderCourseList();
+            showCourseDetails(courseId);
+        }
+
+        /**
+         * Renders the list of courses in the sidebar.
+         */
+        function renderCourseList() {
+            courseListElement.innerHTML = COURSE_DATA.map(course => {
+                const isCompleted = courseCompletionStatus[course.id];
+                const activeClass = document.getElementById('details-card') && document.getElementById('details-card').dataset.id === course.id
+                    ? 'bg-teal-100 border-teal-600 font-semibold'
+                    : 'hover:bg-gray-50';
+                
+                return `
+                    <div id="course-item-${course.id}"
+                        onclick="showCourseDetails('${course.id}')"
+                        class="p-4 rounded-xl cursor-pointer transition duration-150 border-l-4 border-transparent ${activeClass} flex justify-between items-center shadow-sm"
+                    >
+                        <span class="text-gray-800 text-lg">${course.title}</span>
+                        ${isCompleted 
+                            ? '<span class="px-2 py-1 text-xs font-bold rounded-full bg-green-100 text-green-700">COMPLETED</span>' 
+                            : '<span class="px-2 py-1 text-xs font-bold rounded-full bg-yellow-100 text-yellow-700">IN PROGRESS</span>'
+                        }
+                    </div>
+                `;
+            }).join('');
+        }
+
+        /**
+         * Renders the details of the selected course in the main content area.
+         * @param {string} courseId 
+         */
+        function showCourseDetails(courseId) {
+            const course = COURSE_DATA.find(c => c.id === courseId);
+            if (!course) return;
+
+            const isCompleted = courseCompletionStatus[course.id];
+            
+            // --- Helper for Lesson List ---
+            const lessonList = course.lessons.map((lesson, index) => `
+                <li class="flex items-center space-x-3 text-gray-700 p-3 border-b last:border-b-0">
+                    <span class="font-bold text-teal-500 w-5">${index + 1}.</span>
+                    <span class="text-base">${lesson}</span>
+                </li>
+            `).join('');
+
+            // --- HTML Template for Details ---
+            const detailsHtml = `
+                <div id="details-card" data-id="${course.id}" class="space-y-6">
+                    <!-- Status Badge -->
+                    <div class="mb-6">
+                        ${isCompleted 
+                            ? '<span class="inline-flex items-center px-4 py-2 text-md font-bold rounded-full bg-green-100 text-green-700 shadow-md">✅ Course Completed!</span>' 
+                            : '<span class="inline-flex items-center px-4 py-2 text-md font-bold rounded-full bg-yellow-100 text-yellow-700 shadow-md">📚 Currently In Progress</span>'
+                        }
+                    </div>
+
+                    <h1 class="text-5xl font-extrabold text-gray-900">${course.title}</h1>
+                    <p class="text-xl text-gray-600">${course.description}</p>
+                    
+                    <!-- Stats -->
+                    <div class="flex space-x-8 text-lg font-medium text-gray-700 pt-2 border-t border-gray-100">
+                        <p>🕒 ${course.duration}</p>
+                        <p>📦 ${course.modules} Modules</p>
+                    </div>
+
+                    <!-- Completion Button -->
+                    <button
+                        onclick="toggleCompletion('${course.id}')"
+                        class="w-full lg:w-96 px-6 py-3 rounded-full text-white font-bold transition duration-300 shadow-lg mt-8
+                               ${isCompleted 
+                                   ? 'bg-red-500 hover:bg-red-600 transform hover:scale-[1.01]' 
+                                   : 'bg-teal-600 hover:bg-teal-700 transform hover:scale-[1.01]'
+                               }"
+                    >
+                        ${isCompleted ? 'Mark as UNCOMPLETED' : 'Mark as COMPLETED'}
+                    </button>
+
+                    <!-- Lessons/Curriculum -->
+                    <h2 class="text-3xl font-bold text-gray-800 pt-10 border-t mt-10">Curriculum & Lessons</h2>
+                    <ul class="bg-gray-50 rounded-xl overflow-hidden shadow-inner p-2">
+                        ${lessonList}
+                    </ul>
+                </div>
+            `;
+
+            courseDetailsElement.innerHTML = detailsHtml;
+            // Update the sidebar to highlight the active course
+            renderCourseList();
+        }
+
+        // --- 3. INITIALIZATION ---
+        window.onload = function() {
+            renderCourseList();
+            
+            // Automatically show details for the first course on load
+            if (COURSE_DATA.length > 0) {
+                showCourseDetails(COURSE_DATA[0].id);
+            }
+        };
+    </script>
+</body>
+</html>
